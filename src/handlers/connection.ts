@@ -12,21 +12,22 @@ export function setupConnectionHandlers(io: GameSocketServer) {
 
     const roomManager = RoomManager.getInstance();
 
-    socket.on("create_room", (selectedShip?: string) => {
+    socket.on("create_room", (selectedShip?: string, playerName?: string) => {
       const roomId = roomManager.generateRoomId();
       const room = roomManager.createRoom(roomId, socket.id);
       
       socket.join(roomId);
       socket.data.roomId = roomId;
       socket.data.selectedShip = selectedShip;
+      socket.data.playerName = playerName;
 
-      room.addPlayer(socket.id, selectedShip);
+      room.addPlayer(socket.id, playerName, selectedShip);
 
       io.to(roomId).emit("room_state_update", room.getRoomState());
-      console.log(`[Room] ${socket.id} created and joined room ${roomId}`);
+      console.log(`[Room] ${socket.id} (Name: ${playerName || 'anon'}) created and joined room ${roomId}`);
     });
 
-    socket.on("join_room", (roomId: string, selectedShip?: string) => {
+    socket.on("join_room", (roomId: string, selectedShip?: string, playerName?: string) => {
       const room = roomManager.getRoom(roomId);
       
       if (!room) {
@@ -42,11 +43,12 @@ export function setupConnectionHandlers(io: GameSocketServer) {
       socket.join(roomId);
       socket.data.roomId = roomId;
       socket.data.selectedShip = selectedShip;
+      socket.data.playerName = playerName;
       
-      room.addPlayer(socket.id, selectedShip);
+      room.addPlayer(socket.id, playerName, selectedShip);
       
       io.to(roomId).emit("room_state_update", room.getRoomState());
-      console.log(`[Room] ${socket.id} joined room ${roomId}`);
+      console.log(`[Room] ${socket.id} (Name: ${playerName || 'anon'}) joined room ${roomId}`);
     });
 
     socket.on("start_game", () => {
@@ -59,6 +61,52 @@ export function setupConnectionHandlers(io: GameSocketServer) {
         console.log(`[Game] Room ${roomId} started`);
       } else {
         socket.emit("error", "Only the host can start the game");
+      }
+    });
+
+    socket.on("player_life_lost", (lives: number) => {
+      const roomId = socket.data.roomId;
+      if (!roomId) return;
+
+      const room = roomManager.getRoom(roomId);
+      if (room) {
+        room.playerLifeLost(socket.id, lives);
+        io.to(roomId).emit("room_state_update", room.getRoomState());
+      }
+    });
+
+    socket.on("player_victory", (levelNumber: number) => {
+      const roomId = socket.data.roomId;
+      if (!roomId) return;
+
+      const room = roomManager.getRoom(roomId);
+      if (room) {
+        room.playerVictory(socket.id, levelNumber);
+        io.to(roomId).emit("room_state_update", room.getRoomState());
+      }
+    });
+
+    socket.on("change_game_mode", (mode: 'classic' | 'survival') => {
+      const roomId = socket.data.roomId;
+      if (!roomId) return;
+
+      const room = roomManager.getRoom(roomId);
+      if (room && room.hostId === socket.id) {
+        room.changeGameMode(mode);
+        io.to(roomId).emit("room_state_update", room.getRoomState());
+        console.log(`[Room] Game mode changed in room ${roomId} to: ${mode}`);
+      }
+    });
+
+    socket.on("return_to_lobby", () => {
+      const roomId = socket.data.roomId;
+      if (!roomId) return;
+
+      const room = roomManager.getRoom(roomId);
+      if (room && room.hostId === socket.id) {
+        room.returnToLobby();
+        io.to(roomId).emit("room_state_update", room.getRoomState());
+        console.log(`[Room] Host reset room ${roomId} to lobby`);
       }
     });
 
@@ -84,6 +132,7 @@ export function setupConnectionHandlers(io: GameSocketServer) {
           } else {
             io.to(roomId).emit("room_state_update", room.getRoomState());
           }
+          room.handleSurvivalEndCheck();
         }
       }
     });
