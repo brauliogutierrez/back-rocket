@@ -133,17 +133,7 @@ class GameState {
             return;
         const playersArray = Array.from(this.players.values());
         const alivePlayers = playersArray.filter(p => p.isAlive && p.lives > 0);
-        if (alivePlayers.length === 1 && playersArray.length > 1) {
-            const winner = alivePlayers[0];
-            this.stopGame();
-            console.log(`[Survival] Winner declared: ${winner.name} (${winner.id})`);
-            this.io.to(this.id).emit('survival_victory', {
-                winnerId: winner.id,
-                winnerName: winner.name,
-                reason: 'last_standing'
-            });
-        }
-        else if (alivePlayers.length === 0) {
+        if (alivePlayers.length === 0) {
             this.stopGame();
             if (playersArray.length > 0) {
                 let winner = playersArray[0];

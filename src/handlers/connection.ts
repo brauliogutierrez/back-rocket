@@ -16,15 +16,18 @@ export function setupConnectionHandlers(io: GameSocketServer) {
       const roomId = roomManager.generateRoomId();
       const room = roomManager.createRoom(roomId, socket.id);
       
+      const multiplayerShips = ['cm', 'cm1', 'cm2', 'cm3', 'cm4', 'cm5'];
+      const randomShip = multiplayerShips[Math.floor(Math.random() * multiplayerShips.length)];
+
       socket.join(roomId);
       socket.data.roomId = roomId;
-      socket.data.selectedShip = selectedShip;
+      socket.data.selectedShip = randomShip;
       socket.data.playerName = playerName;
 
-      room.addPlayer(socket.id, playerName, selectedShip);
+      room.addPlayer(socket.id, playerName, randomShip);
 
       io.to(roomId).emit("room_state_update", room.getRoomState());
-      console.log(`[Room] ${socket.id} (Name: ${playerName || 'anon'}) created and joined room ${roomId}`);
+      console.log(`[Room] ${socket.id} (Name: ${playerName || 'anon'}) created and joined room ${roomId} with ship ${randomShip}`);
     });
 
     socket.on("join_room", (roomId: string, selectedShip?: string, playerName?: string) => {
@@ -40,15 +43,18 @@ export function setupConnectionHandlers(io: GameSocketServer) {
         return;
       }
 
+      const multiplayerShips = ['cm', 'cm1', 'cm2', 'cm3', 'cm4', 'cm5'];
+      const randomShip = multiplayerShips[Math.floor(Math.random() * multiplayerShips.length)];
+
       socket.join(roomId);
       socket.data.roomId = roomId;
-      socket.data.selectedShip = selectedShip;
+      socket.data.selectedShip = randomShip;
       socket.data.playerName = playerName;
       
-      room.addPlayer(socket.id, playerName, selectedShip);
+      room.addPlayer(socket.id, playerName, randomShip);
       
       io.to(roomId).emit("room_state_update", room.getRoomState());
-      console.log(`[Room] ${socket.id} (Name: ${playerName || 'anon'}) joined room ${roomId}`);
+      console.log(`[Room] ${socket.id} (Name: ${playerName || 'anon'}) joined room ${roomId} with ship ${randomShip}`);
     });
 
     socket.on("start_game", () => {
